@@ -1,0 +1,2029 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Liga1 Esports - Free Fire & Tournaments Platform</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            accent: '#10b981',
+                            highlight: '#f59e0b',
+                            ffOrange: '#ff5722',
+                            card: '#1e293b',
+                            dark: '#0b0f19'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b0f19;
+            color: #f3f4f6;
+        }
+        
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .glow-effect {
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.25);
+        }
+        
+        .glow-orange {
+            box-shadow: 0 0 20px rgba(255, 87, 34, 0.3);
+        }
+
+        .badge-live {
+            animation: pulse-red 2s infinite;
+        }
+
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+
+    <!-- Firebase -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+        import {
+            getAuth,
+            GoogleAuthProvider,
+            signInWithPopup,
+            onAuthStateChanged,
+            signOut
+        } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+        import {
+            getFirestore,
+            doc,
+            getDoc,
+            collection,
+            query,
+            where,
+            orderBy,
+            onSnapshot
+        } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+        import {
+            getFunctions,
+            httpsCallable
+        } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-functions.js";
+
+        // ============================================================
+        // PASTE YOUR FIREBASE WEB APP CONFIG HERE
+        // Firebase Console -> Project settings -> Your apps -> Web app
+        // ============================================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyDL9o1zBLYRSkToZgdH9wHFbo-wtceufWQ",
+            authDomain: "fox-hub.firebaseapp.com",
+            projectId: "fox-hub",
+            storageBucket: "fox-hub.firebasestorage.app",
+            messagingSenderId: "860870702110",
+            appId: "1:860870702110:web:96cbb75fa5bb8b37c32a0f"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const functions = getFunctions(app, "asia-south1");
+        const googleProvider = new GoogleAuthProvider();
+
+        // Expose only the app services needed by the existing UI.
+        window.LigaFirebase = {
+            app, auth, db, functions, googleProvider,
+            signInWithPopup, onAuthStateChanged, signOut,
+            doc, getDoc, collection, query, where, orderBy, onSnapshot,
+            httpsCallable
+        };
+
+        window.dispatchEvent(new CustomEvent("liga-firebase-ready"));
+    </script>
+
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-indigo-600 selection:text-white">
+
+
+    <!-- REAL FIREBASE GOOGLE LOGIN -->
+    <section id="auth-screen" class="min-h-screen flex items-center justify-center px-4 py-10 bg-slate-950">
+        <div class="w-full max-w-md">
+            <div class="bg-slate-900 border border-slate-800 rounded-3xl p-7 shadow-2xl">
+                <div class="text-center mb-7">
+                    <div class="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-500 via-orange-600 to-red-600 flex items-center justify-center text-white text-2xl font-black shadow-lg glow-orange">
+                        FF
+                    </div>
+                    <h1 class="mt-4 text-2xl font-black text-white">LIGA1 Esports</h1>
+                    <p class="mt-1 text-sm text-slate-400">Free Fire Arena</p>
+                </div>
+
+                <div id="auth-status" class="hidden mb-4 p-3 rounded-xl text-xs font-semibold"></div>
+
+                <button id="google-login-button" type="button"
+                    class="w-full py-3.5 px-4 rounded-xl bg-white hover:bg-slate-100 text-slate-900 font-black text-sm transition flex items-center justify-center gap-3 shadow-lg">
+                    <i class="fa-brands fa-google text-red-500"></i>
+                    Continue with Google
+                </button>
+
+                <p class="text-[11px] text-slate-500 text-center mt-5 leading-relaxed">
+                    Your Google account is used only to authenticate your Liga1 account.
+                    Your Firebase UID is the permanent account identifier.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Application Shell -->
+    <div id="app-shell" class="hidden flex-col md:flex-row min-h-screen relative overflow-x-hidden">
+
+        <!-- Sidebar Navigation (Desktop) -->
+        <aside class="hidden md:flex md:w-64 flex-col bg-slate-900 border-r border-slate-800 p-4 sticky top-0 h-screen z-30">
+            <!-- App Logo -->
+            <div class="flex items-center gap-3 px-2 py-3 mb-6">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 via-orange-600 to-red-600 flex items-center justify-center text-white text-xl font-black shadow-lg glow-orange">
+                    FF
+                </div>
+                <div>
+                    <h1 class="text-xl font-extrabold tracking-wider bg-gradient-to-r from-white via-orange-200 to-amber-400 bg-clip-text text-transparent">LIGA1</h1>
+                    <span class="text-[10px] uppercase tracking-widest text-orange-400 font-semibold">Esports Arena</span>
+                </div>
+            </div>
+
+            <!-- Primary Navigation Links (Home, Freefire, Wallet) -->
+            <nav class="space-y-2 flex-1">
+                <button onclick="switchTab('home')" id="nav-home" class="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl font-semibold text-sm transition-all duration-200 text-white bg-indigo-600/20 text-indigo-400 border border-indigo-500/30">
+                    <i class="fa-solid fa-house w-5 text-center text-indigo-400"></i>
+                    <span>Home</span>
+                </button>
+                <button onclick="switchTab('freefire')" id="nav-freefire" class="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl font-semibold text-sm transition-all duration-200 text-slate-400 hover:text-white hover:bg-slate-800">
+                    <i class="fa-solid fa-fire w-5 text-center text-orange-500"></i>
+                    <span>Freefire</span>
+                    <span class="ml-auto bg-orange-500/20 text-orange-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-orange-500/30">HOT</span>
+                </button>
+                <button onclick="switchTab('wallet')" id="nav-wallet" class="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl font-semibold text-sm transition-all duration-200 text-slate-400 hover:text-white hover:bg-slate-800">
+                    <i class="fa-solid fa-wallet w-5 text-center text-emerald-400"></i>
+                    <span>Wallet</span>
+                </button>
+            </nav>
+
+            <!-- Wallet Balance Quick Widget -->
+            <div class="mt-auto p-4 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950/80 border border-slate-700/80 shadow-lg">
+                <div class="flex items-center justify-between mb-1.5">
+                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Coin Balance</span>
+                    <i class="fa-solid fa-coins text-amber-400"></i>
+                </div>
+                <div class="text-2xl font-black text-white flex items-center gap-1.5">
+                    <span id="sidebar-balance">1,250</span>
+                    <span class="text-xs font-bold text-amber-400">Coins</span>
+                </div>
+                <button onclick="switchTab('wallet')" class="w-full mt-3 py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 shadow">
+                    <i class="fa-solid fa-plus text-[10px]"></i> Deposit Coins
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <div class="flex-1 flex flex-col min-w-0 pb-20 md:pb-6">
+
+            <!-- Top Header Bar -->
+            <header class="sticky top-0 z-20 glass-panel border-b border-slate-800 px-4 py-3 md:px-6 flex items-center justify-between">
+                <!-- Mobile Logo -->
+                <div class="flex items-center gap-2.5 md:hidden">
+                    <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-amber-500 to-orange-600 flex items-center justify-center text-white text-sm font-black shadow">
+                        FF
+                    </div>
+                    <span class="font-extrabold text-base tracking-wider text-white">LIGA1</span>
+                </div>
+
+                <!-- Page Header Title (Desktop) -->
+                <div class="hidden md:block">
+                    <h2 id="page-title" class="text-lg font-bold text-white">Overview & Profile</h2>
+                    <p id="page-subtitle" class="text-xs text-slate-400">Welcome to Liga1 Esports Hub</p>
+                </div>
+
+                <!-- User Quick Stats & Actions -->
+                <div class="flex items-center gap-3 ml-auto">
+                    <!-- Quick Balance Display -->
+                    <div onclick="switchTab('wallet')" class="cursor-pointer flex items-center gap-2 bg-slate-800/90 hover:bg-slate-800 px-3.5 py-1.5 rounded-xl border border-slate-700 transition shadow-sm">
+                        <i class="fa-solid fa-coins text-amber-400"></i>
+                        <div class="text-left">
+                            <div class="text-[9px] text-slate-400 uppercase leading-none font-bold">Balance</div>
+                            <div id="header-balance" class="text-sm font-black text-white leading-tight">1,250</div>
+                        </div>
+                    </div>
+
+                    
+                    <button onclick="logoutUser()" title="Logout"
+                        class="p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white hover:bg-rose-900/40 transition border border-slate-700">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                    </button>
+
+                    <!-- Notification Bell -->
+                    <button onclick="toggleNotifications()" class="relative p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition border border-slate-700">
+                        <i class="fa-solid fa-bell"></i>
+                        <span id="notif-badge" class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-slate-900"></span>
+                    </button>
+
+                    <!-- Avatar Trigger -->
+                    <div onclick="switchTab('home')" class="cursor-pointer flex items-center gap-2 bg-slate-800/90 p-1 pr-3 rounded-full border border-slate-700 hover:border-indigo-500 transition">
+                        <img id="user-avatar" src="https://api.dicebear.com/7.x/bottts/svg?seed=ShadowSlayer" alt="User Avatar" class="w-8 h-8 rounded-full bg-slate-900">
+                        <span id="user-name-header" class="text-xs font-semibold text-slate-200 hidden sm:inline">ShadowNinja</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Notifications Drawer -->
+            <div id="notifications-drawer" class="hidden fixed right-4 top-16 w-80 sm:w-96 glass-panel rounded-2xl border border-slate-700/80 shadow-2xl z-50 p-4">
+                <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-700">
+                    <h3 class="font-bold text-sm text-white flex items-center gap-2">
+                        <i class="fa-solid fa-bell text-indigo-400"></i> Notifications
+                    </h3>
+                    <button onclick="toggleNotifications()" class="text-slate-400 hover:text-white text-xs">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <div id="notifications-list" class="space-y-2 max-h-72 overflow-y-auto pr-1">
+                    <!-- Dynamic Notifications rendered via JS -->
+                </div>
+            </div>
+
+            <!-- ================= TAB 1: HOME ================= -->
+            <section id="tab-home" class="p-4 md:p-6 space-y-6">
+                <!-- PROFILE BANNER -->
+                <div class="relative rounded-3xl overflow-hidden bg-gradient-to-r from-indigo-950 via-slate-900 to-purple-950 border border-indigo-500/30 p-6 md:p-8 shadow-2xl glow-effect">
+                    <div class="absolute -right-10 -bottom-10 opacity-10 pointer-events-none">
+                        <i class="fa-solid fa-trophy text-[220px] text-indigo-400"></i>
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row items-center sm:items-start gap-6 relative z-10">
+                        <!-- Profile Avatar with Badge -->
+                        <div class="relative">
+                            <img id="home-avatar" src="https://api.dicebear.com/7.x/bottts/svg?seed=ShadowSlayer" alt="Profile Avatar" class="w-24 h-24 rounded-2xl bg-slate-950 p-1 border-2 border-indigo-500 shadow-xl">
+                            <button onclick="randomizeAvatar()" class="absolute -bottom-2 -right-2 bg-indigo-600 hover:bg-indigo-500 text-white p-2 rounded-xl border border-slate-800 text-xs shadow">
+                                <i class="fa-solid fa-rotate"></i>
+                            </button>
+                        </div>
+
+                        <!-- Profile Info: Name, Email & Sub-details -->
+                        <div class="text-center sm:text-left space-y-2 flex-1">
+                            <div class="flex flex-col sm:flex-row sm:items-center gap-2">
+                                <h3 id="home-user-name" class="text-2xl font-black text-white tracking-wide">ShadowNinja</h3>
+                                <span class="inline-flex items-center justify-center gap-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">
+                                    <i class="fa-solid fa-circle-check text-emerald-400"></i> Verified Player
+                                </span>
+                            </div>
+
+                            <!-- Email Address Display -->
+                            <div class="flex items-center justify-center sm:justify-start gap-2 text-slate-300 text-xs">
+                                <i class="fa-solid fa-envelope text-indigo-400"></i>
+                                <span id="home-user-email" class="font-medium">shadowninja.esports@gmail.com</span>
+                            </div>
+
+                            <!-- Additional Information below profile -->
+                            <div class="pt-3 border-t border-slate-800/80 grid grid-cols-2 sm:grid-cols-4 gap-3 text-left">
+                                <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
+                                    <span class="text-[10px] text-slate-400 block uppercase font-bold">Free Fire UID</span>
+                                    <span id="home-user-uid" class="text-xs font-mono font-bold text-amber-400">FF-98234101</span>
+                                </div>
+                                <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
+                                    <span class="text-[10px] text-slate-400 block uppercase font-bold">Matches Played</span>
+                                    <span class="text-xs font-black text-white">38 Matches</span>
+                                </div>
+                                <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
+                                    <span class="text-[10px] text-slate-400 block uppercase font-bold">Total Booyah</span>
+                                    <span class="text-xs font-black text-emerald-400">14 Wins</span>
+                                </div>
+                                <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
+                                    <span class="text-[10px] text-slate-400 block uppercase font-bold">Member Rank</span>
+                                    <span class="text-xs font-black text-orange-400">Grand Master</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Action Banners -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div onclick="switchTab('freefire')" class="cursor-pointer bg-gradient-to-r from-orange-950/80 to-slate-900 p-6 rounded-2xl border border-orange-500/30 hover:border-orange-500 transition group flex items-center justify-between shadow-lg">
+                        <div class="space-y-1">
+                            <span class="text-[10px] uppercase tracking-wider font-extrabold text-orange-400">Custom Room Arena</span>
+                            <h4 class="text-lg font-black text-white group-hover:text-orange-300 transition">Enter Freefire Battles</h4>
+                            <p class="text-xs text-slate-400">Create or join 1v1, 2v2, 4v4 Clash Squad & BR rooms</p>
+                        </div>
+                        <div class="w-12 h-12 rounded-2xl bg-orange-600/20 border border-orange-500/40 flex items-center justify-center text-orange-400 text-xl group-hover:scale-110 transition">
+                            <i class="fa-solid fa-crosshairs"></i>
+                        </div>
+                    </div>
+
+                    <div onclick="switchTab('wallet')" class="cursor-pointer bg-gradient-to-r from-emerald-950/80 to-slate-900 p-6 rounded-2xl border border-emerald-500/30 hover:border-emerald-500 transition group flex items-center justify-between shadow-lg">
+                        <div class="space-y-1">
+                            <span class="text-[10px] uppercase tracking-wider font-extrabold text-emerald-400">Instant Cashouts</span>
+                            <h4 class="text-lg font-black text-white group-hover:text-emerald-300 transition">Manage Wallet & Earnings</h4>
+                            <p class="text-xs text-slate-400">Top-up coins via eSewa / Khalti & cash out winnings</p>
+                        </div>
+                        <div class="w-12 h-12 rounded-2xl bg-emerald-600/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 text-xl group-hover:scale-110 transition">
+                            <i class="fa-solid fa-wallet"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Platform Information Section -->
+                <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800 space-y-4">
+                    <h3 class="text-base font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-shield-halved text-indigo-400"></i> Liga1 Arena Rules & Guidelines
+                    </h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                        <div class="bg-slate-950 p-4 rounded-xl border border-slate-800/80 space-y-1">
+                            <div class="font-bold text-slate-200 flex items-center gap-1.5">
+                                <span class="w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[10px]">1</span>
+                                Valid Game Name & UID
+                            </div>
+                            <p class="text-slate-400 text-[11px]">Keep your Freefire IGN and UID updated before joining any room to prevent entry rejections.</p>
+                        </div>
+                        <div class="bg-slate-950 p-4 rounded-xl border border-slate-800/80 space-y-1">
+                            <div class="font-bold text-slate-200 flex items-center gap-1.5">
+                                <span class="w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[10px]">2</span>
+                                Room Credentials
+                            </div>
+                            <p class="text-slate-400 text-[11px]">Room ID & Password are submitted by room creators after match start and locked as read-only.</p>
+                        </div>
+                        <div class="bg-slate-950 p-4 rounded-xl border border-slate-800/80 space-y-1">
+                            <div class="font-bold text-slate-200 flex items-center gap-1.5">
+                                <span class="w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[10px]">3</span>
+                                Match Results & Payouts
+                            </div>
+                            <p class="text-slate-400 text-[11px]">Always take a screenshot at match end to submit for quick verification & coin distribution.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ================= TAB 2: FREEFIRE ================= -->
+            <section id="tab-freefire" class="p-4 md:p-6 space-y-6 hidden">
+                
+                <!-- UPPER SECTION: Player Balance & Editable Name / UID Banner -->
+                <div class="bg-gradient-to-r from-orange-950 via-slate-900 to-amber-950 p-6 rounded-3xl border border-orange-500/40 space-y-5 shadow-2xl glow-orange">
+                    <div class="flex flex-col sm:flex-row items-center justify-between gap-4 pb-4 border-b border-orange-500/20">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-600 flex items-center justify-center text-white text-2xl font-black shadow-md">
+                                🔥
+                            </div>
+                            <div>
+                                <span class="text-[10px] font-extrabold uppercase tracking-widest text-orange-400">Freefire Customs Hub</span>
+                                <h3 class="text-xl font-black text-white">Player Arena Controls</h3>
+                            </div>
+                        </div>
+
+                        <!-- Player Balance Display Badge -->
+                        <div class="bg-slate-950/80 backdrop-blur-md px-5 py-2.5 rounded-2xl border border-amber-500/40 flex items-center gap-3">
+                            <i class="fa-solid fa-coins text-amber-400 text-2xl"></i>
+                            <div>
+                                <span class="text-[9px] uppercase font-bold text-slate-400 block leading-none">Player Balance</span>
+                                <span class="text-xl font-black text-amber-400"><span id="ff-banner-balance">1,250</span> Coins</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Editable Player Name & Game UID Fields -->
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <label class="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                                <i class="fa-solid fa-user-pen text-orange-400"></i> Free Fire In-Game Name & Character UID
+                                <span class="text-rose-400 text-[10px] font-semibold">(Mandatory before joining/creating room)</span>
+                            </label>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <!-- Editable Player Name -->
+                            <div class="relative">
+                                <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">IGN:</span>
+                                <input type="text" id="ff-player-name" value="" oninput="updatePlayerCredentials()" placeholder="Enter Freefire Player Name" class="w-full bg-slate-950 border border-slate-700 focus:border-orange-500 rounded-xl pl-12 pr-20 py-2.5 text-xs text-white focus:outline-none font-bold">
+                                <button onclick="copyFieldValue('ff-player-name', 'Player Name')" class="absolute right-2 top-1/2 -translate-y-1/2 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-[10px] font-bold transition">
+                                    <i class="fa-regular fa-copy"></i> Copy
+                                </button>
+                            </div>
+
+                            <!-- Editable Player UID -->
+                            <div class="relative">
+                                <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">UID:</span>
+                                <input type="text" id="ff-player-uid" value="" oninput="updatePlayerCredentials()" placeholder="Enter Freefire UID Number" class="w-full bg-slate-950 border border-slate-700 focus:border-orange-500 rounded-xl pl-12 pr-20 py-2.5 text-xs text-amber-400 focus:outline-none font-mono font-bold">
+                                <button onclick="copyFieldValue('ff-player-uid', 'Game UID')" class="absolute right-2 top-1/2 -translate-y-1/2 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-[10px] font-bold transition">
+                                    <i class="fa-regular fa-copy"></i> Copy
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- LOWER SECTION HEADER: Create Room Button & Room Filters -->
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-2">
+                    <div>
+                        <h3 class="text-lg font-black text-white flex items-center gap-2">
+                            <i class="fa-solid fa-gamepad text-orange-400"></i> Active Freefire Custom Rooms
+                        </h3>
+                        <p class="text-xs text-slate-400">Join custom matches or host your own custom room setup</p>
+                    </div>
+
+                    <!-- Create Room System Button -->
+                    <button onclick="openCreateRoomWizard()" class="py-3 px-6 bg-gradient-to-r from-orange-500 via-amber-500 to-red-500 hover:from-orange-400 hover:to-red-400 text-slate-950 font-black rounded-2xl text-xs shadow-lg shadow-orange-500/20 transition transform active:scale-95 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-plus-circle text-base"></i> CREATE CUSTOM ROOM
+                    </button>
+                </div>
+
+                <!-- LOWER SECTION: Freefire Room List Items -->
+                <div id="ff-rooms-container" class="space-y-4">
+                    <!-- Dynamic rendering via JS -->
+                </div>
+            </section>
+
+            <!-- ================= TAB 3: WALLET ================= -->
+            <section id="tab-wallet" class="p-4 md:p-6 space-y-6 hidden">
+                <!-- Wallet Stats Summary Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="bg-gradient-to-br from-indigo-900/60 to-slate-900 p-5 rounded-2xl border border-indigo-500/30">
+                        <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Total L1 Coins</div>
+                        <div class="text-3xl font-black text-white flex items-center gap-2">
+                            <i class="fa-solid fa-coins text-amber-400"></i>
+                            <span id="wallet-coins-large">1,250</span>
+                        </div>
+                        <div class="text-xs text-emerald-400 font-semibold mt-2">1 Coin = Rs. 1 NPR</div>
+                    </div>
+
+                    <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800">
+                        <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Total Cash Earnings</div>
+                        <div class="text-3xl font-black text-emerald-400">
+                            Rs. <span id="wallet-earnings">3,480</span>
+                        </div>
+                        <div class="text-xs text-slate-400 mt-2">Earned from 14 Booyah Matches</div>
+                    </div>
+
+                    <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800">
+                        <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Pending Cashouts</div>
+                        <div class="text-3xl font-black text-amber-400">
+                            Rs. <span id="wallet-pending">0</span>
+                        </div>
+                        <div class="text-xs text-slate-400 mt-2">Processed within 1-12 hours</div>
+                    </div>
+                </div>
+
+                <!-- Top-Up & Cashout Forms -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Add / Deposit Coins -->
+                    <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 space-y-4">
+                        <h3 class="text-base font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-square-plus text-indigo-400"></i> Top-Up L1 Coins
+                        </h3>
+                        <div class="p-3 rounded-xl bg-amber-950/30 border border-amber-500/20 text-[11px] text-amber-200">
+                            <i class="fa-solid fa-shield-halved mr-1"></i>
+                            Pay using the official QR shown by Liga1, put your Liga1 email in the payment remark,
+                            then submit the transaction reference. Coins are added only after admin verification.
+                        </div>
+
+                        <div class="p-4 rounded-xl bg-slate-950 border border-slate-800">
+                            <div class="flex items-center justify-between mb-3">
+                                <div>
+                                    <div class="text-xs font-bold text-white">Official Liga1 Payment QR</div>
+                                    <div id="payment-settings-text" class="text-[10px] text-slate-400 mt-1">Loading payment instructions...</div>
+                                </div>
+                                <span class="text-[9px] font-black uppercase text-emerald-400">Verified Flow</span>
+                            </div>
+                            <div class="flex justify-center">
+                                <div id="payment-qr-box" class="w-44 h-44 rounded-2xl border border-slate-800 bg-white flex items-center justify-center text-slate-500 text-[10px] text-center p-4">
+                                    Admin payment QR has not been configured yet.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-2">Preset Coin Amounts</label>
+                            <div class="grid grid-cols-4 gap-2">
+                                <button onclick="selectDepositAmount(100)" class="py-2 text-xs font-bold rounded-xl border border-slate-700 bg-slate-800 hover:border-indigo-500 hover:text-indigo-400 transition">🪙 100</button>
+                                <button onclick="selectDepositAmount(250)" class="py-2 text-xs font-bold rounded-xl border border-indigo-500 bg-indigo-600/20 text-indigo-400 transition">🪙 250</button>
+                                <button onclick="selectDepositAmount(500)" class="py-2 text-xs font-bold rounded-xl border border-slate-700 bg-slate-800 hover:border-indigo-500 hover:text-indigo-400 transition">🪙 500</button>
+                                <button onclick="selectDepositAmount(1000)" class="py-2 text-xs font-bold rounded-xl border border-slate-700 bg-slate-800 hover:border-indigo-500 hover:text-indigo-400 transition">🪙 1,000</button>
+                            </div>
+                        </div>
+
+                        <div class="space-y-1">
+                            <label class="block text-xs font-semibold text-slate-300">Custom Coin Amount</label>
+                            <input type="number" id="deposit-custom-input" value="250" min="20" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-2">Payment Option</label>
+                            <div class="grid grid-cols-3 gap-2">
+                                <button type="button" class="p-2.5 rounded-xl border border-emerald-500/50 bg-emerald-950/30 text-xs font-bold text-emerald-400 flex flex-col items-center gap-1">
+                                    <i class="fa-solid fa-mobile-screen-button text-lg"></i> eSewa
+                                </button>
+                                <button type="button" class="p-2.5 rounded-xl border border-slate-700 bg-slate-800 text-xs font-bold text-slate-300 flex flex-col items-center gap-1">
+                                    <i class="fa-solid fa-wallet text-lg"></i> Khalti
+                                </button>
+                                <button type="button" class="p-2.5 rounded-xl border border-slate-700 bg-slate-800 text-xs font-bold text-slate-300 flex flex-col items-center gap-1">
+                                    <i class="fa-solid fa-building-columns text-lg"></i> Bank Mobile
+                                </button>
+                            </div>
+                        </div>
+
+                        <button onclick="processDeposit()" class="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-slate-950 font-black rounded-xl text-sm transition shadow">
+                            CONFIRM COIN TOP-UP
+                        </button>
+                    </div>
+
+                    <!-- Cashout / Withdraw Earnings -->
+                    <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 space-y-4">
+                        <h3 class="text-base font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-money-bill-transfer text-emerald-400"></i> Request Withdrawal
+                        </h3>
+
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-300 mb-1">Withdraw Coins</label>
+                                <input type="number" id="cashout-amount" placeholder="Min. Rs. 200" min="200" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-300 mb-1">Wallet Option</label>
+                                <select id="cashout-method" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+                                    <option value="eSewa">eSewa Mobile Wallet</option>
+                                    <option value="Khalti">Khalti Wallet</option>
+                                    <option value="IME Pay">IME Pay</option>
+                                    <option value="Bank Transfer">Bank Transfer</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-300 mb-1">User Account ID / Wallet ID</label>
+                                <input type="text" id="cashout-account" placeholder="e.g. 9800000000" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+                            </div>
+                        </div>
+
+                        <button onclick="processCashout()" class="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-sm transition shadow">
+                            SUBMIT WITHDRAWAL REQUEST
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Transaction Ledger Table -->
+                <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 space-y-3">
+                    <h3 class="text-base font-bold text-white">Transaction History</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs text-slate-300">
+                            <thead class="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider">
+                                <tr>
+                                    <th class="p-3">Type</th>
+                                    <th class="p-3">Description</th>
+                                    <th class="p-3">Amount</th>
+                                    <th class="p-3">Date</th>
+                                    <th class="p-3">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transaction-history-body" class="divide-y divide-slate-800">
+                                <!-- Dynamic JS rendering -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+
+        <!-- Mobile Bottom Navigation Bar -->
+        <div class="md:hidden fixed bottom-0 left-0 right-0 glass-panel border-t border-slate-800 py-2.5 px-4 z-40 flex justify-around items-center">
+            <button onclick="switchTab('home')" id="mobile-nav-home" class="flex flex-col items-center gap-1 text-indigo-400">
+                <i class="fa-solid fa-house text-lg"></i>
+                <span class="text-[10px] font-bold">Home</span>
+            </button>
+            <button onclick="switchTab('freefire')" id="mobile-nav-freefire" class="flex flex-col items-center gap-1 text-slate-400">
+                <i class="fa-solid fa-fire text-lg"></i>
+                <span class="text-[10px] font-bold">Freefire</span>
+            </button>
+            <button onclick="switchTab('wallet')" id="mobile-nav-wallet" class="flex flex-col items-center gap-1 text-slate-400">
+                <i class="fa-solid fa-wallet text-lg"></i>
+                <span class="text-[10px] font-bold">Wallet</span>
+            </button>
+        </div>
+
+    </div>
+
+    <!-- ================= MODAL: 7-STEP ROOM CREATION WIZARD ================= -->
+    <div id="create-room-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+        <div class="bg-slate-900 border border-orange-500/30 rounded-3xl w-full max-w-xl p-6 space-y-5 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <button onclick="closeCreateRoomWizard()" class="absolute top-5 right-5 text-slate-400 hover:text-white text-lg">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <!-- Wizard Header & Progress Bar -->
+            <div>
+                <div class="flex items-center gap-2">
+                    <span class="text-[10px] font-black uppercase tracking-widest text-orange-400 bg-orange-500/10 px-2.5 py-0.5 rounded-full border border-orange-500/20">Step <span id="wizard-step-num">1</span> of 7</span>
+                    <span id="wizard-step-title" class="text-xs font-extrabold text-slate-300">Room Type</span>
+                </div>
+                <h3 class="text-xl font-black text-white mt-1">Host Freefire Custom Room</h3>
+                
+                <!-- Progress Line -->
+                <div class="w-full bg-slate-950 h-1.5 rounded-full mt-3 overflow-hidden border border-slate-800">
+                    <div id="wizard-progress-bar" class="bg-gradient-to-r from-orange-500 to-amber-400 h-full transition-all duration-300" style="width: 14%"></div>
+                </div>
+            </div>
+
+            <!-- STEP 1: ROOM TYPE -->
+            <div id="wizard-step-1" class="wizard-step-panel space-y-3">
+                <label class="block text-xs font-bold text-slate-200">Select Room Type:</label>
+                <div class="grid grid-cols-2 gap-3">
+                    <button type="button" onclick="selectWizardRoomType('Clash Squad')" class="wizard-opt-btn step1-opt p-4 rounded-2xl border border-slate-800 bg-slate-950 hover:border-orange-500 text-left transition flex flex-col gap-2">
+                        <i class="fa-solid fa-people-group text-orange-400 text-xl"></i>
+                        <div>
+                            <div class="text-sm font-black text-white">Clash Squad</div>
+                            <div class="text-[10px] text-slate-400">Round based 4v4/1v1 team battle</div>
+                        </div>
+                    </button>
+                    <button type="button" onclick="selectWizardRoomType('Battle Royale')" class="wizard-opt-btn step1-opt p-4 rounded-2xl border border-slate-800 bg-slate-950 hover:border-orange-500 text-left transition flex flex-col gap-2">
+                        <i class="fa-solid fa-map-location-dot text-amber-400 text-xl"></i>
+                        <div>
+                            <div class="text-sm font-black text-white">Battle Royale</div>
+                            <div class="text-[10px] text-slate-400">Bermuda map survival match</div>
+                        </div>
+                    </button>
+                    <button type="button" onclick="selectWizardRoomType('Lone Wolf')" class="wizard-opt-btn step1-opt p-4 rounded-2xl border border-slate-800 bg-slate-950 hover:border-orange-500 text-left transition flex flex-col gap-2">
+                        <i class="fa-solid fa-user-ninja text-emerald-400 text-xl"></i>
+                        <div>
+                            <div class="text-sm font-black text-white">Lone Wolf</div>
+                            <div class="text-[10px] text-slate-400">1v1 or 2v2 duel rounds</div>
+                        </div>
+                    </button>
+                    <button type="button" onclick="selectWizardRoomType('Team Deathmatch')" class="wizard-opt-btn step1-opt p-4 rounded-2xl border border-slate-800 bg-slate-950 hover:border-orange-500 text-left transition flex flex-col gap-2">
+                        <i class="fa-solid fa-skull text-rose-400 text-xl"></i>
+                        <div>
+                            <div class="text-sm font-black text-white">Team Deathmatch</div>
+                            <div class="text-[10px] text-slate-400">Fast action kill count arena</div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- STEP 2: WINNER DETERMINATION -->
+            <div id="wizard-step-2" class="wizard-step-panel hidden space-y-3">
+                <label class="block text-xs font-bold text-slate-200">Who Wins / Winner Rule:</label>
+                <div id="clashsquad-winner-menu" class="grid grid-cols-2 gap-3">
+                    <button type="button" onclick="selectWizardWinner('Match Winner')" class="wizard-opt-btn step2-opt p-4 rounded-2xl border border-slate-800 bg-slate-950 hover:border-orange-500 text-left transition flex flex-col gap-2">
+                        <i class="fa-solid fa-trophy text-amber-400 text-xl"></i>
+                        <div>
+                            <div class="text-sm font-black text-white">Match Winner</div>
+                            <div class="text-[10px] text-slate-400">Team with highest round wins</div>
+                        </div>
+                    </button>
+                    <button type="button" onclick="selectWizardWinner('Highest Killer')" class="wizard-opt-btn step2-opt p-4 rounded-2xl border border-slate-800 bg-slate-950 hover:border-orange-500 text-left transition flex flex-col gap-2">
+                        <i class="fa-solid fa-crosshairs text-rose-400 text-xl"></i>
+                        <div>
+                            <div class="text-sm font-black text-white">Highest Killer</div>
+                            <div class="text-[10px] text-slate-400">Player with maximum total eliminations</div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- STEP 3: TEAM TYPE -->
+            <div id="wizard-step-3" class="wizard-step-panel hidden space-y-3">
+                <label class="block text-xs font-bold text-slate-200">Select Teams Type:</label>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    <button type="button" onclick="selectWizardTeamType('1v1')" class="wizard-opt-btn step3-opt p-3.5 rounded-2xl border border-slate-800 bg-slate-950 hover:border-orange-500 text-center transition">
+                        <div class="text-base font-black text-white">1v1</div>
+                        <div class="text-[10px] text-slate-400">Solo Duel</div>
+                    </button>
+                    <button type="button" onclick="selectWizardTeamType('2v2')" class="wizard-opt-btn step3-opt p-3.5 rounded-2xl border border-slate-800 bg-slate-950 hover:border-orange-500 text-center transition">
+                        <div class="text-base font-black text-white">2v2</div>
+                        <div class="text-[10px] text-slate-400">Duo Match</div>
+                    </button>
+                    <button type="button" onclick="selectWizardTeamType('3v3')" class="wizard-opt-btn step3-opt p-3.5 rounded-2xl border border-slate-800 bg-slate-950 hover:border-orange-500 text-center transition">
+                        <div class="text-base font-black text-white">3v3</div>
+                        <div class="text-[10px] text-slate-400">Trio Match</div>
+                    </button>
+                    <button type="button" onclick="selectWizardTeamType('4v4')" class="wizard-opt-btn step3-opt p-3.5 rounded-2xl border border-slate-800 bg-slate-950 hover:border-orange-500 text-center transition">
+                        <div class="text-base font-black text-white">4v4</div>
+                        <div class="text-[10px] text-slate-400">Full Squad</div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- STEP 4: STORE SYSTEM & GUN SELECTION -->
+            <div id="wizard-step-4" class="wizard-step-panel hidden space-y-4">
+                <label class="block text-xs font-bold text-slate-200">Select Store System:</label>
+                <div class="grid grid-cols-2 gap-3">
+                    <button type="button" onclick="selectWizardStoreSystem('General')" class="wizard-opt-btn step4-opt p-3.5 rounded-2xl border border-slate-800 bg-slate-950 hover:border-orange-500 text-left transition">
+                        <div class="text-sm font-black text-white">General Store</div>
+                        <div class="text-[10px] text-slate-400">Default standard weapon store</div>
+                    </button>
+                    <button type="button" onclick="selectWizardStoreSystem('Fixed')" class="wizard-opt-btn step4-opt p-3.5 rounded-2xl border border-slate-800 bg-slate-950 hover:border-orange-500 text-left transition">
+                        <div class="text-sm font-black text-white">Fixed Custom Guns</div>
+                        <div class="text-[10px] text-slate-400">Pick specific allowed firearms</div>
+                    </button>
+                </div>
+
+                <!-- Sub-section for Fixed Gun selection -->
+                <div id="fixed-guns-subsection" class="hidden bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2">
+                    <span class="text-xs font-bold text-orange-400 block">Pick Available Guns:</span>
+                    <div class="grid grid-cols-3 gap-2">
+                        <label class="flex items-center gap-2 bg-slate-900 p-2 rounded-xl text-xs text-slate-200 cursor-pointer">
+                            <input type="checkbox" value="Desert Eagle" checked class="gun-checkbox accent-orange-500"> Desert
+                        </label>
+                        <label class="flex items-center gap-2 bg-slate-900 p-2 rounded-xl text-xs text-slate-200 cursor-pointer">
+                            <input type="checkbox" value="M1887" checked class="gun-checkbox accent-orange-500"> M1887
+                        </label>
+                        <label class="flex items-center gap-2 bg-slate-900 p-2 rounded-xl text-xs text-slate-200 cursor-pointer">
+                            <input type="checkbox" value="Woodpecker" class="gun-checkbox accent-orange-500"> Woodpecker
+                        </label>
+                        <label class="flex items-center gap-2 bg-slate-900 p-2 rounded-xl text-xs text-slate-200 cursor-pointer">
+                            <input type="checkbox" value="SKS" class="gun-checkbox accent-orange-500"> SKS
+                        </label>
+                        <label class="flex items-center gap-2 bg-slate-900 p-2 rounded-xl text-xs text-slate-200 cursor-pointer">
+                            <input type="checkbox" value="SVD" class="gun-checkbox accent-orange-500"> SVD
+                        </label>
+                        <label class="flex items-center gap-2 bg-slate-900 p-2 rounded-xl text-xs text-slate-200 cursor-pointer">
+                            <input type="checkbox" value="M1014" checked class="gun-checkbox accent-orange-500"> M1014
+                        </label>
+                        <label class="flex items-center gap-2 bg-slate-900 p-2 rounded-xl text-xs text-slate-200 cursor-pointer">
+                            <input type="checkbox" value="UMP" checked class="gun-checkbox accent-orange-500"> UMP
+                        </label>
+                        <label class="flex items-center gap-2 bg-slate-900 p-2 rounded-xl text-xs text-slate-200 cursor-pointer">
+                            <input type="checkbox" value="MP40" checked class="gun-checkbox accent-orange-500"> MP40
+                        </label>
+                        <label class="flex items-center gap-2 bg-slate-900 p-2 rounded-xl text-xs text-slate-200 cursor-pointer">
+                            <input type="checkbox" value="AWM" class="gun-checkbox accent-orange-500"> AWM
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STEP 5: GAME TOGGLES -->
+            <div id="wizard-step-5" class="wizard-step-panel hidden space-y-4">
+                <label class="block text-xs font-bold text-slate-200">Configure Game Settings / Toggles:</label>
+                <div class="space-y-3">
+                    <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 flex items-center justify-between">
+                        <div>
+                            <span class="text-xs font-bold text-white block">Throw / Ammo Limit</span>
+                            <span class="text-[10px] text-slate-400">Limited Gloo Walls / Ammo</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <button type="button" onclick="setWizardToggle('throwLimit', 'Yes')" id="toggle-throw-yes" class="toggle-btn px-3 py-1 rounded-xl text-xs font-bold bg-slate-800 text-slate-300">Yes</button>
+                            <button type="button" onclick="setWizardToggle('throwLimit', 'No')" id="toggle-throw-no" class="toggle-btn px-3 py-1 rounded-xl text-xs font-bold bg-orange-600 text-white">No</button>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 flex items-center justify-between">
+                        <div>
+                            <span class="text-xs font-bold text-white block">Character Skill</span>
+                            <span class="text-[10px] text-slate-400">Active skills enabled</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <button type="button" onclick="setWizardToggle('characterSkill', 'Yes')" id="toggle-skill-yes" class="toggle-btn px-3 py-1 rounded-xl text-xs font-bold bg-orange-600 text-white">Yes</button>
+                            <button type="button" onclick="setWizardToggle('characterSkill', 'No')" id="toggle-skill-no" class="toggle-btn px-3 py-1 rounded-xl text-xs font-bold bg-slate-800 text-slate-300">No</button>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 flex items-center justify-between">
+                        <div>
+                            <span class="text-xs font-bold text-white block">Headshot Only</span>
+                            <span class="text-[10px] text-slate-400">Body hits do zero damage</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <button type="button" onclick="setWizardToggle('headshotOnly', 'Yes')" id="toggle-headshot-yes" class="toggle-btn px-3 py-1 rounded-xl text-xs font-bold bg-slate-800 text-slate-300">Yes</button>
+                            <button type="button" onclick="setWizardToggle('headshotOnly', 'No')" id="toggle-headshot-no" class="toggle-btn px-3 py-1 rounded-xl text-xs font-bold bg-orange-600 text-white">No</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STEP 6: ENTRY FEE & RULES -->
+            <div id="wizard-step-6" class="wizard-step-panel hidden space-y-4">
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-200 mb-1">
+                            Entry Fee (Coins) <span class="text-orange-400 text-[10px] font-bold">(Must be greater than 10)</span>
+                        </label>
+                        <input type="number" id="wizard-entry-fee" value="50" min="11" class="w-full bg-slate-950 border border-slate-700 focus:border-orange-500 rounded-2xl px-4 py-2.5 text-sm text-white font-black focus:outline-none">
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-xs font-bold text-slate-200">Room Rules & Match Conditions</label>
+                            <button type="button" onclick="insertDefaultRules()" class="text-[10px] text-orange-400 hover:underline font-bold">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i> Preset Rules
+                            </button>
+                        </div>
+                        <textarea id="wizard-rules" rows="3" class="w-full bg-slate-950 border border-slate-700 focus:border-orange-500 rounded-2xl p-3 text-xs text-slate-300 focus:outline-none" placeholder="e.g. No emulator, No grenade, Screenshot required at match end."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STEP 7: REVIEW & CONFIRM -->
+            <div id="wizard-step-7" class="wizard-step-panel hidden space-y-4">
+                <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2 text-xs">
+                    <span class="text-xs font-extrabold text-orange-400 block uppercase tracking-wider">Summary Review</span>
+                    <div class="grid grid-cols-2 gap-2 text-slate-300">
+                        <div>Room Type: <strong id="sum-type" class="text-white">Clash Squad</strong></div>
+                        <div>Winner Rule: <strong id="sum-winner" class="text-white">Match Winner</strong></div>
+                        <div>Teams Type: <strong id="sum-team" class="text-white">2v2</strong></div>
+                        <div>Store System: <strong id="sum-store" class="text-white">General</strong></div>
+                        <div>Entry Fee: <strong id="sum-fee" class="text-amber-400">🪙 50</strong></div>
+                        <div>Creator Name: <strong id="sum-creator" class="text-white">ShadowNinja</strong></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation Buttons -->
+            <div class="flex justify-between items-center pt-3 border-t border-slate-800">
+                <button type="button" id="wizard-prev-btn" onclick="wizardPrevStep()" class="px-5 py-2.5 rounded-xl border border-slate-700 text-slate-300 hover:bg-slate-800 text-xs font-bold transition disabled:opacity-30 disabled:pointer-events-none">
+                    <i class="fa-solid fa-arrow-left"></i> Previous
+                </button>
+
+                <button type="button" id="wizard-next-btn" onclick="wizardNextStep()" class="px-6 py-2.5 bg-orange-600 hover:bg-orange-500 text-white rounded-xl text-xs font-black transition shadow">
+                    Next Step <i class="fa-solid fa-arrow-right"></i>
+                </button>
+
+                <button type="button" id="wizard-create-btn" onclick="confirmCreateRoom()" class="hidden px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-slate-950 font-black rounded-xl text-xs transition shadow glow-effect">
+                    <i class="fa-solid fa-check"></i> CREATE ROOM NOW
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MODAL: ROOM DETAILS & PARTICIPANT CONTROL PANEL ================= -->
+    <div id="room-details-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+        <div class="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-xl p-6 space-y-5 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <button onclick="closeRoomDetailsModal()" class="absolute top-5 right-5 text-slate-400 hover:text-white text-lg">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <!-- Room Header -->
+            <div class="space-y-1">
+                <div class="flex items-center gap-2">
+                    <span id="rd-type-badge" class="bg-orange-500/20 text-orange-400 border border-orange-500/30 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase">Clash Squad</span>
+                    <span id="rd-status-badge" class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase">15s Cancel Window</span>
+                </div>
+                <h3 id="rd-title" class="text-xl font-black text-white">Freefire Custom Match</h3>
+                <p class="text-xs text-slate-400">Created by: <strong id="rd-creator-name" class="text-slate-200">ShadowNinja</strong></p>
+            </div>
+
+            <!-- Configuration Summary Box -->
+            <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2 text-xs">
+                <span class="text-[10px] text-slate-400 block uppercase font-bold tracking-wider">Owner Selected Configurations</span>
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-slate-300">
+                    <div>Team: <strong id="rd-team" class="text-white">2v2</strong></div>
+                    <div>Winner Rule: <strong id="rd-winner" class="text-white">Match Winner</strong></div>
+                    <div>Store: <strong id="rd-store" class="text-white">General</strong></div>
+                    <div>Throw Limit: <strong id="rd-throw" class="text-white">No</strong></div>
+                    <div>Skill: <strong id="rd-skill" class="text-white">Yes</strong></div>
+                    <div>Headshot: <strong id="rd-headshot" class="text-white">No</strong></div>
+                </div>
+                <div id="rd-guns-box" class="hidden text-[11px] text-orange-300 pt-1 border-t border-slate-900">
+                    Allowed Guns: <span id="rd-guns-list"></span>
+                </div>
+            </div>
+
+            <!-- Room ID & Password Display Section -->
+            <div id="rd-credentials-box" class="bg-slate-950 p-4 rounded-2xl border border-orange-500/40 space-y-2">
+                <div class="flex justify-between items-center">
+                    <span class="text-xs font-bold text-orange-400 flex items-center gap-1.5">
+                        <i class="fa-solid fa-lock text-xs"></i> Match Credentials
+                    </span>
+                    <span id="rd-credentials-status" class="text-[10px] font-bold text-slate-400">Awaiting Creator Submission</span>
+                </div>
+
+                <div id="rd-credentials-display" class="grid grid-cols-2 gap-3 pt-1">
+                    <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-800 flex justify-between items-center">
+                        <div>
+                            <span class="text-[9px] text-slate-400 block uppercase">Room ID</span>
+                            <span id="rd-id-val" class="text-sm font-mono font-black text-white">Hidden</span>
+                        </div>
+                        <button onclick="copyFieldValue('rd-id-val', 'Room ID')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-bold rounded">Copy</button>
+                    </div>
+                    <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-800 flex justify-between items-center">
+                        <div>
+                            <span class="text-[9px] text-slate-400 block uppercase">Password</span>
+                            <span id="rd-pass-val" class="text-sm font-mono font-black text-amber-400">Hidden</span>
+                        </div>
+                        <button onclick="copyFieldValue('rd-pass-val', 'Password')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-bold rounded">Copy</button>
+                    </div>
+                </div>
+
+                <!-- Creator Input Form (Visible only to creator when match starts) -->
+                <div id="rd-creator-input-area" class="hidden pt-2 border-t border-slate-900 space-y-2">
+                    <span class="text-xs font-bold text-emerald-400 block">Submit Room Credentials for Joined Players:</span>
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="text" id="input-room-id" placeholder="Enter Room ID" class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none">
+                        <input type="text" id="input-room-pass" placeholder="Enter Pass" class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+                    </div>
+                    <button onclick="submitRoomCredentials()" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-black rounded-xl text-xs transition">
+                        SUBMIT CREDENTIALS
+                    </button>
+                </div>
+            </div>
+
+            <!-- Spectator / Joined Player Toggle Tabs -->
+            <div class="space-y-3">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                    <h4 class="text-xs font-extrabold text-white uppercase tracking-wider">Participants List</h4>
+                    <div class="flex gap-1">
+                        <button onclick="switchSpectatorTab('players')" id="spectator-tab-players" class="px-3 py-1 rounded-lg text-[10px] font-bold bg-orange-600 text-white">Joined Players</button>
+                        <button onclick="switchSpectatorTab('spectators')" id="spectator-tab-specs" class="px-3 py-1 rounded-lg text-[10px] font-bold bg-slate-800 text-slate-400">Spectators (1)</button>
+                    </div>
+                </div>
+
+                <!-- Players List -->
+                <div id="rd-players-list" class="space-y-2 max-h-40 overflow-y-auto">
+                    <!-- Dynamic rendering -->
+                </div>
+
+                <!-- Spectators List (hidden initially) -->
+                <div id="rd-spectators-list" class="hidden space-y-2 max-h-40 overflow-y-auto">
+                    <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800 flex justify-between items-center text-xs">
+                        <span class="text-slate-300 font-bold"><i class="fa-solid fa-eye text-indigo-400 mr-2"></i> Spectator Admin</span>
+                        <span class="text-[10px] text-slate-500 font-mono">OBSERVER</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Result Submit Button & Cancellation Actions -->
+            <div class="pt-2 flex flex-col gap-2">
+                <button id="btn-cancel-match" onclick="cancelMatchByCreator()" class="hidden w-full py-2.5 bg-rose-600/20 hover:bg-rose-600 text-rose-300 border border-rose-500/30 rounded-xl text-xs font-bold transition">
+                    <i class="fa-solid fa-ban"></i> CANCEL MATCH (15s Window)
+                </button>
+
+                <button id="btn-submit-result" onclick="openResultSubmitModal()" class="hidden w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-slate-950 font-black rounded-xl text-xs transition shadow">
+                    <i class="fa-solid fa-trophy"></i> SUBMIT MATCH RESULT & SCREENSHOT
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MODAL: SUBMIT RESULT & SCREENSHOT ================= -->
+    <div id="result-submit-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+        <div class="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-md p-6 space-y-4 shadow-2xl relative">
+            <button onclick="closeResultSubmitModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-base">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <div>
+                <h3 class="text-base font-black text-white">Submit Match Result Proof</h3>
+                <p class="text-xs text-slate-400">Enter final kills and upload game screenshot</p>
+            </div>
+
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block text-slate-300 font-bold mb-1">Total Kills Achieved</label>
+                    <input type="number" id="result-kills-input" value="6" min="0" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-bold focus:outline-none focus:border-orange-500">
+                </div>
+
+                <div>
+                    <label class="block text-slate-300 font-bold mb-1">Match Screenshot Proof</label>
+                    <div onclick="simulateScreenshotUpload()" class="border-2 border-dashed border-slate-700 hover:border-orange-500 rounded-2xl p-4 text-center cursor-pointer bg-slate-950/60 transition">
+                        <i class="fa-solid fa-cloud-arrow-up text-2xl text-orange-400 mb-1"></i>
+                        <p id="screenshot-status-text" class="text-[11px] text-slate-400 font-semibold">Click to attach match summary screenshot</p>
+                    </div>
+                </div>
+            </div>
+
+            <button onclick="confirmResultSubmission()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-black rounded-xl text-xs transition shadow">
+                VERIFY & SUBMIT RESULTS
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        // REAL FIREBASE USER STATE
+        // No fake balance or fake identity is created here.
+        // Wallet fields are loaded from Firestore after Google login.
+        // ============================================================
+        let userState = {
+            name: 'Free Fire Player',
+            email: '',
+            uid: '',
+            balance: 0,
+            earnings: 0,
+            pending: 0,
+            avatarSeed: '',
+            notifications: []
+        };
+
+        let ffRooms = [];
+
+        let activeWizard = {
+            step: 1,
+            roomType: 'Clash Squad',
+            winnerRule: 'Match Winner',
+            teamType: '2v2',
+            storeSystem: 'General',
+            selectedGuns: ['Desert Eagle', 'M1887', 'MP40'],
+            toggles: { throwLimit: 'No', characterSkill: 'Yes', headshotOnly: 'No' },
+            entryFee: 50,
+            rules: 'No hacks, emulator allowed, screenshot mandatory.'
+        };
+
+        let currentActiveRoomId = null;
+
+
+        function firebaseConfigIsMissing() {
+            const current = window.LigaFirebase?.app?.options || {};
+            return !current.apiKey || current.apiKey === "PASTE_API_KEY" ||
+                   !current.projectId || current.projectId === "PASTE_PROJECT_ID";
+        }
+
+        let unsubscribeTransactions = null;
+
+        window.addEventListener("liga-firebase-ready", () => {
+            if (firebaseConfigIsMissing()) {
+                showAuthMessage("Firebase is not configured yet. Add your Firebase Web App config in this file.", "error");
+                return;
+            }
+
+            const { auth, onAuthStateChanged } = window.LigaFirebase;
+
+            document.getElementById("google-login-button").addEventListener("click", loginWithGoogle);
+
+            onAuthStateChanged(auth, async (firebaseUser) => {
+                if (!firebaseUser) {
+                    showAuthScreen();
+                    return;
+                }
+
+                try {
+                    await loadOrCreateUser(firebaseUser);
+                    showAppScreen();
+
+                    renderHeaderAndProfileUI();
+                    renderFreefireRooms();
+                    renderNotifications();
+                    await subscribeToTransactions(firebaseUser.uid);
+                    await loadPaymentSettings();
+
+                    // Existing room timer UI remains.
+                    setInterval(updateRoomTimers, 1000);
+                } catch (error) {
+                    console.error("Firebase user initialization failed:", error);
+                    showAuthMessage(error?.message || "Unable to load your account.", "error");
+                    await window.LigaFirebase.signOut(auth);
+                }
+            });
+        });
+
+        function showAuthScreen() {
+            document.getElementById("auth-screen").classList.remove("hidden");
+            document.getElementById("app-shell").classList.add("hidden");
+            document.getElementById("app-shell").classList.remove("flex");
+        }
+
+        function showAppScreen() {
+            document.getElementById("auth-screen").classList.add("hidden");
+            document.getElementById("app-shell").classList.remove("hidden");
+            document.getElementById("app-shell").classList.add("flex");
+        }
+
+        function showAuthMessage(message, type = "error") {
+            const el = document.getElementById("auth-status");
+            if (!el) return;
+            el.classList.remove("hidden", "text-rose-300", "bg-rose-950/40", "border-rose-500/30",
+                "text-emerald-300", "bg-emerald-950/40", "border-emerald-500/30");
+            el.className += type === "error"
+                ? " text-rose-300 bg-rose-950/40 border border-rose-500/30"
+                : " text-emerald-300 bg-emerald-950/40 border border-emerald-500/30";
+            el.innerText = message;
+        }
+
+        async function loginWithGoogle() {
+            const button = document.getElementById("google-login-button");
+            button.disabled = true;
+            button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Connecting to Google...';
+
+            try {
+                await window.LigaFirebase.signInWithPopup(
+                    window.LigaFirebase.auth,
+                    window.LigaFirebase.googleProvider
+                );
+            } catch (error) {
+                console.error("Google login error:", error);
+                showAuthMessage(error?.message || "Google login failed.", "error");
+                button.disabled = false;
+                button.innerHTML = '<i class="fa-brands fa-google text-red-500"></i> Continue with Google';
+            }
+        }
+
+        async function logoutUser() {
+            try {
+                if (unsubscribeTransactions) {
+                    unsubscribeTransactions();
+                    unsubscribeTransactions = null;
+                }
+                await window.LigaFirebase.signOut(window.LigaFirebase.auth);
+            } catch (error) {
+                console.error(error);
+                showToast("Logout failed. Please try again.", "error");
+            }
+        }
+
+        async function loadOrCreateUser(firebaseUser) {
+            const call = window.LigaFirebase.httpsCallable(
+                window.LigaFirebase.functions,
+                "ensureUserProfile"
+            );
+            const result = await call({});
+            const data = result.data || {};
+
+            userState.name = data.freeFireNickname || data.displayName || firebaseUser.displayName || "Free Fire Player";
+            userState.email = firebaseUser.email || data.email || "";
+            userState.uid = firebaseUser.uid;
+            userState.balance = Number(data.balance || 0);
+            userState.earnings = Number(data.earnings || 0);
+            userState.pending = Number(data.pendingWithdrawal || 0);
+            userState.avatarSeed = firebaseUser.uid;
+            userState.notifications = [];
+
+            const nameInput = document.getElementById("ff-player-name");
+            const uidInput = document.getElementById("ff-player-uid");
+            if (nameInput) nameInput.value = data.freeFireNickname || "";
+            if (uidInput) uidInput.value = data.freeFireUID || "";
+        }
+
+        async function subscribeToTransactions(uid) {
+            if (unsubscribeTransactions) unsubscribeTransactions();
+
+            const { db, collection, query, where, orderBy, onSnapshot } = window.LigaFirebase;
+            const q = query(
+                collection(db, "transactions"),
+                where("uid", "==", uid),
+                orderBy("createdAt", "desc")
+            );
+
+            unsubscribeTransactions = onSnapshot(q, (snapshot) => {
+                transactions = snapshot.docs.map(docSnap => {
+                    const tx = docSnap.data();
+                    return {
+                        type: tx.type || "Transaction",
+                        desc: tx.description || tx.type || "",
+                        amount: `${Number(tx.amount || 0) >= 0 ? "+ " : "- "}${Math.abs(Number(tx.amount || 0))} Coins`,
+                        date: tx.createdAt?.toDate ? tx.createdAt.toDate().toLocaleDateString() : "Pending",
+                        status: tx.status || "Pending"
+                    };
+                });
+                renderTransactions();
+            }, (error) => {
+                console.error("Transaction listener:", error);
+                showToast("Transaction history could not be loaded.", "error");
+            });
+        }
+
+        async function loadPaymentSettings() {
+            try {
+                const snap = await window.LigaFirebase.getDoc(
+                    window.LigaFirebase.doc(window.LigaFirebase.db, "settings", "payment")
+                );
+                const box = document.getElementById("payment-qr-box");
+                const text = document.getElementById("payment-settings-text");
+                if (!snap.exists()) {
+                    if (text) text.innerText = "Payment QR is being configured by Liga1 administration.";
+                    return;
+                }
+                const data = snap.data() || {};
+                if (text) text.innerText = data.instructions || "Pay the exact amount and put your Liga1 email in the payment remark.";
+                if (box && data.qrImageUrl) {
+                    box.innerHTML = `<img src="${data.qrImageUrl}" alt="Liga1 official payment QR" class="w-full h-full object-contain rounded-xl">`;
+                }
+            } catch (error) {
+                console.error("Payment settings load failed:", error);
+            }
+        }
+
+        function switchTab(tabName) {
+            const tabs = ['home', 'freefire', 'wallet'];
+            tabs.forEach(t => {
+                const el = document.getElementById(`tab-${t}`);
+                if (el) el.classList.add('hidden');
+
+                const navBtn = document.getElementById(`nav-${t}`);
+                if (navBtn) {
+                    if (t === tabName) {
+                        navBtn.className = "w-full flex items-center gap-3 px-3.5 py-3 rounded-xl font-semibold text-sm transition-all duration-200 text-white bg-indigo-600/20 text-indigo-400 border border-indigo-500/30";
+                    } else {
+                        navBtn.className = "w-full flex items-center gap-3 px-3.5 py-3 rounded-xl font-semibold text-sm transition-all duration-200 text-slate-400 hover:text-white hover:bg-slate-800";
+                    }
+                }
+
+                const mobileBtn = document.getElementById(`mobile-nav-${t}`);
+                if (mobileBtn) {
+                    if (t === tabName) {
+                        mobileBtn.className = "flex flex-col items-center gap-1 text-indigo-400";
+                    } else {
+                        mobileBtn.className = "flex flex-col items-center gap-1 text-slate-400";
+                    }
+                }
+            });
+
+            const activeTabEl = document.getElementById(`tab-${tabName}`);
+            if (activeTabEl) activeTabEl.classList.remove('hidden');
+
+            const pageTitle = document.getElementById('page-title');
+            const pageSubtitle = document.getElementById('page-subtitle');
+
+            if (tabName === 'home') {
+                pageTitle.innerText = "Overview & Profile";
+                pageSubtitle.innerText = "Welcome to Liga1 Esports Hub";
+            } else if (tabName === 'freefire') {
+                pageTitle.innerText = "Freefire Custom Arena";
+                pageSubtitle.innerText = "Create rooms & compete in 1v1, 2v2, 4v4 Clash Squad";
+            } else if (tabName === 'wallet') {
+                pageTitle.innerText = "Wallet & Top-Up";
+                pageSubtitle.innerText = "Deposit coins & withdraw earnings";
+            }
+        }
+
+        async function updatePlayerCredentials() {
+            const nameInput = document.getElementById('ff-player-name').value.trim();
+            const uidInput = document.getElementById('ff-player-uid').value.trim();
+
+            if (!nameInput || !uidInput) {
+                showToast("Free Fire nickname and UID are required.", "error");
+                return;
+            }
+
+            try {
+                const call = window.LigaFirebase.httpsCallable(window.LigaFirebase.functions, "updateFreeFireProfile");
+                await call({ freeFireNickname: nameInput, freeFireUID: uidInput });
+                userState.name = nameInput;
+                renderHeaderAndProfileUI();
+                showToast("Free Fire profile saved.", "success");
+            } catch (error) {
+                console.error("Free Fire profile update failed:", error);
+                showToast(error?.message || "Could not save Free Fire profile.", "error");
+            }
+        }
+
+        // MANDATORY VALIDATION: Name & UID must NOT be empty before joining or creating a room
+        function validatePlayerCredentials() {
+            const name = document.getElementById('ff-player-name').value.trim();
+            const uid = document.getElementById('ff-player-uid').value.trim();
+
+            if (!name || !uid) {
+                showToast("Name and Game UID cannot be null! Please fill them in the upper Freefire section first.", "error");
+                switchTab('freefire');
+                document.getElementById('ff-player-name').focus();
+                return false;
+            }
+            return true;
+        }
+
+        function renderFreefireRooms() {
+            const container = document.getElementById('ff-rooms-container');
+            if (!container) return;
+
+            const activeRooms = ffRooms.filter(r => r.status !== 'CANCELLED');
+
+            if (activeRooms.length === 0) {
+                container.innerHTML = `
+                    <div class="bg-slate-900/90 p-8 rounded-3xl border border-slate-800 text-center space-y-3">
+                        <i class="fa-solid fa-ghost text-4xl text-slate-600"></i>
+                        <p class="text-sm font-semibold text-slate-400">No active custom rooms right now.</p>
+                        <button onclick="openCreateRoomWizard()" class="px-5 py-2.5 bg-orange-600 text-white rounded-xl text-xs font-bold">Create First Room</button>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = activeRooms.map(r => {
+                const joinedCount = r.participants.length;
+                const isUserJoined = r.participants.some(p => p.name === userState.name || p.uid === userState.uid);
+                const isFull = joinedCount >= r.maxPlayers;
+
+                // Elapsed time calculations
+                const elapsedSec = Math.floor((Date.now() - r.createdAt) / 1000);
+                let timerBadge = '';
+
+                if (r.status === 'WAITING' && elapsedSec <= 15) {
+                    timerBadge = `<span class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full">⏱️ Cancel Window (${15 - elapsedSec}s)</span>`;
+                } else if (r.status === 'WAITING' || r.status === 'STARTED') {
+                    const matchTimeLeft = Math.max(0, 600 - (elapsedSec - 15));
+                    const mins = Math.floor(matchTimeLeft / 60);
+                    const secs = matchTimeLeft % 60;
+                    timerBadge = `<span class="bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full">⏳ Match Timer (${mins}:${secs < 10 ? '0' : ''}${secs})</span>`;
+                } else if (r.status === 'ID_PASS_SUBMITTED') {
+                    const matchTimeLeft = Math.max(0, 1800 - elapsedSec);
+                    const mins = Math.floor(matchTimeLeft / 60);
+                    const secs = matchTimeLeft % 60;
+                    timerBadge = `<span class="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full">🎮 Live (${mins}:${secs < 10 ? '0' : ''}${secs})</span>`;
+                }
+
+                return `
+                    <div class="bg-slate-900 rounded-2xl border border-slate-800 hover:border-orange-500/50 transition p-4 sm:p-5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 shadow-lg">
+                        <div class="space-y-2 flex-1">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="bg-orange-500/20 text-orange-400 border border-orange-500/30 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase">
+                                    ${r.type}
+                                </span>
+                                ${timerBadge}
+                            </div>
+
+                            <div>
+                                <h4 class="text-base font-extrabold text-white">Created by ${r.creator}</h4>
+                                <div class="text-xs text-slate-400 flex items-center gap-3 mt-0.5">
+                                    <span>Team: <strong class="text-slate-200">${r.teamType}</strong></span>
+                                    <span>Rule: <strong class="text-slate-200">${r.winnerRule}</strong></span>
+                                    <span>Store: <strong class="text-slate-200">${r.storeSystem}</strong></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center sm:flex-col justify-between sm:justify-center items-end gap-3 border-t sm:border-t-0 border-slate-800 pt-3 sm:pt-0">
+                            <div class="text-left sm:text-right">
+                                <span class="text-[10px] text-slate-400 uppercase font-bold block">Entry Fee</span>
+                                <span class="text-lg font-black text-amber-400">🪙 ${r.entryFee}</span>
+                            </div>
+
+                            <div class="flex items-center gap-2">
+                                <span class="bg-slate-950 border border-slate-800 text-slate-300 text-xs font-black px-2.5 py-1 rounded-xl">
+                                    ${joinedCount}/${r.maxPlayers}
+                                </span>
+
+                                ${isUserJoined ? `
+                                    <button onclick="openRoomDetailsModal('${r.id}')" class="px-4 py-2 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold hover:bg-emerald-600 hover:text-slate-950 transition">
+                                        View Details
+                                    </button>
+                                ` : (isFull ? `
+                                    <button disabled class="px-4 py-2 bg-slate-800 text-slate-500 rounded-xl text-xs font-bold cursor-not-allowed">
+                                        FULL
+                                    </button>
+                                ` : `
+                                    <button onclick="joinRoom('${r.id}')" class="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-xl text-xs font-black transition shadow">
+                                        JOIN ROOM
+                                    </button>
+                                `)}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateRoomTimers() {
+            renderFreefireRooms();
+            if (currentActiveRoomId) {
+                renderRoomDetailsContent(currentActiveRoomId);
+            }
+        }
+
+        function joinRoom(roomId) {
+            if (!validatePlayerCredentials()) return;
+
+            const room = ffRooms.find(r => r.id === roomId);
+            if (!room) return;
+
+            if (userState.balance < room.entryFee) {
+                showToast("Insufficient Coin balance! Deposit coins first.", "error");
+                switchTab('wallet');
+                return;
+            }
+
+            // Deduct Fee & Add Participant
+            userState.balance -= room.entryFee;
+            room.participants.push({ name: userState.name, uid: userState.uid });
+
+            transactions.unshift({
+                type: 'Entry Fee',
+                desc: `Joined ${room.type} (${room.teamType})`,
+                amount: `- ${room.entryFee} Coins`,
+                date: new Date().toISOString().split('T')[0],
+                status: 'Completed'
+            });
+
+            renderHeaderAndProfileUI();
+            renderFreefireRooms();
+            renderTransactions();
+
+            showToast(`Joined ${room.type} Room successfully!`, "success");
+            openRoomDetailsModal(roomId);
+        }
+
+        function openCreateRoomWizard() {
+            if (!validatePlayerCredentials()) return;
+
+            activeWizard.step = 1;
+            updateWizardStepUI();
+            document.getElementById('create-room-modal').classList.remove('hidden');
+        }
+
+        function closeCreateRoomWizard() {
+            document.getElementById('create-room-modal').classList.add('hidden');
+        }
+
+        function updateWizardStepUI() {
+            const step = activeWizard.step;
+            document.getElementById('wizard-step-num').innerText = step;
+            document.getElementById('wizard-progress-bar').style.width = `${(step / 7) * 100}%`;
+
+            const titles = [
+                "Select Room Type",
+                "Who Wins / Match Rule",
+                "Select Team Type",
+                "Store System & Guns",
+                "Configure Game Settings / Toggles",
+                "Set Entry Fee & Rules",
+                "Review & Confirm Room Creation"
+            ];
+            document.getElementById('wizard-step-title').innerText = titles[step - 1];
+
+            // Hide all panels
+            for (let i = 1; i <= 7; i++) {
+                const panel = document.getElementById(`wizard-step-${i}`);
+                if (panel) panel.classList.add('hidden');
+            }
+
+            // Show active panel
+            const currentPanel = document.getElementById(`wizard-step-${step}`);
+            if (currentPanel) currentPanel.classList.remove('hidden');
+
+            // Button visibility
+            const prevBtn = document.getElementById('wizard-prev-btn');
+            const nextBtn = document.getElementById('wizard-next-btn');
+            const createBtn = document.getElementById('wizard-create-btn');
+
+            if (step === 1) prevBtn.disabled = true;
+            else prevBtn.disabled = false;
+
+            if (step === 7) {
+                nextBtn.classList.add('hidden');
+                createBtn.classList.remove('hidden');
+                populateWizardSummary();
+            } else {
+                nextBtn.classList.remove('hidden');
+                createBtn.classList.add('hidden');
+            }
+        }
+
+        function wizardNextStep() {
+            if (activeWizard.step < 7) {
+                activeWizard.step++;
+                updateWizardStepUI();
+            }
+        }
+
+        function wizardPrevStep() {
+            if (activeWizard.step > 1) {
+                activeWizard.step--;
+                updateWizardStepUI();
+            }
+        }
+
+        /* Step 1 Options */
+        function selectWizardRoomType(type) {
+            activeWizard.roomType = type;
+            document.querySelectorAll('.step1-opt').forEach(btn => {
+                if (btn.innerText.includes(type)) {
+                    btn.className = "wizard-opt-btn step1-opt p-4 rounded-2xl border-2 border-orange-500 bg-orange-950/40 text-left transition flex flex-col gap-2";
+                } else {
+                    btn.className = "wizard-opt-btn step1-opt p-4 rounded-2xl border border-slate-800 bg-slate-950 hover:border-orange-500 text-left transition flex flex-col gap-2";
+                }
+            });
+            setTimeout(wizardNextStep, 200);
+        }
+
+        /* Step 2 Options */
+        function selectWizardWinner(rule) {
+            activeWizard.winnerRule = rule;
+            document.querySelectorAll('.step2-opt').forEach(btn => {
+                if (btn.innerText.includes(rule)) {
+                    btn.className = "wizard-opt-btn step2-opt p-4 rounded-2xl border-2 border-orange-500 bg-orange-950/40 text-left transition flex flex-col gap-2";
+                } else {
+                    btn.className = "wizard-opt-btn step2-opt p-4 rounded-2xl border border-slate-800 bg-slate-950 hover:border-orange-500 text-left transition flex flex-col gap-2";
+                }
+            });
+            setTimeout(wizardNextStep, 200);
+        }
+
+        /* Step 3 Options */
+        function selectWizardTeamType(team) {
+            activeWizard.teamType = team;
+            document.querySelectorAll('.step3-opt').forEach(btn => {
+                if (btn.innerText.includes(team)) {
+                    btn.className = "wizard-opt-btn step3-opt p-3.5 rounded-2xl border-2 border-orange-500 bg-orange-950/40 text-center transition";
+                } else {
+                    btn.className = "wizard-opt-btn step3-opt p-3.5 rounded-2xl border border-slate-800 bg-slate-950 hover:border-orange-500 text-center transition";
+                }
+            });
+            setTimeout(wizardNextStep, 200);
+        }
+
+        /* Step 4 Options */
+        function selectWizardStoreSystem(store) {
+            activeWizard.storeSystem = store;
+            const sub = document.getElementById('fixed-guns-subsection');
+            if (store === 'Fixed') {
+                sub.classList.remove('hidden');
+            } else {
+                sub.classList.add('hidden');
+            }
+
+            document.querySelectorAll('.step4-opt').forEach(btn => {
+                if (btn.innerText.includes(store)) {
+                    btn.className = "wizard-opt-btn step4-opt p-3.5 rounded-2xl border-2 border-orange-500 bg-orange-950/40 text-left transition";
+                } else {
+                    btn.className = "wizard-opt-btn step4-opt p-3.5 rounded-2xl border border-slate-800 bg-slate-950 hover:border-orange-500 text-left transition";
+                }
+            });
+        }
+
+        /* Step 5 Options */
+        function setWizardToggle(key, value) {
+            activeWizard.toggles[key] = value;
+            if (key === 'throwLimit') {
+                document.getElementById('toggle-throw-yes').className = value === 'Yes' ? 'toggle-btn px-3 py-1 rounded-xl text-xs font-bold bg-orange-600 text-white' : 'toggle-btn px-3 py-1 rounded-xl text-xs font-bold bg-slate-800 text-slate-300';
+                document.getElementById('toggle-throw-no').className = value === 'No' ? 'toggle-btn px-3 py-1 rounded-xl text-xs font-bold bg-orange-600 text-white' : 'toggle-btn px-3 py-1 rounded-xl text-xs font-bold bg-slate-800 text-slate-300';
+            } else if (key === 'characterSkill') {
+                document.getElementById('toggle-skill-yes').className = value === 'Yes' ? 'toggle-btn px-3 py-1 rounded-xl text-xs font-bold bg-orange-600 text-white' : 'toggle-btn px-3 py-1 rounded-xl text-xs font-bold bg-slate-800 text-slate-300';
+                document.getElementById('toggle-skill-no').className = value === 'No' ? 'toggle-btn px-3 py-1 rounded-xl text-xs font-bold bg-orange-600 text-white' : 'toggle-btn px-3 py-1 rounded-xl text-xs font-bold bg-slate-800 text-slate-300';
+            } else if (key === 'headshotOnly') {
+                document.getElementById('toggle-headshot-yes').className = value === 'Yes' ? 'toggle-btn px-3 py-1 rounded-xl text-xs font-bold bg-orange-600 text-white' : 'toggle-btn px-3 py-1 rounded-xl text-xs font-bold bg-slate-800 text-slate-300';
+                document.getElementById('toggle-headshot-no').className = value === 'No' ? 'toggle-btn px-3 py-1 rounded-xl text-xs font-bold bg-orange-600 text-white' : 'toggle-btn px-3 py-1 rounded-xl text-xs font-bold bg-slate-800 text-slate-300';
+            }
+        }
+
+        function insertDefaultRules() {
+            document.getElementById('wizard-rules').value = "No hacks/emulators. Respect all players. Screenshot mandatory at end.";
+        }
+
+        function populateWizardSummary() {
+            const fee = parseInt(document.getElementById('wizard-entry-fee').value) || 0;
+            activeWizard.entryFee = fee;
+            activeWizard.rules = document.getElementById('wizard-rules').value;
+
+            // Gather guns if fixed
+            if (activeWizard.storeSystem === 'Fixed') {
+                const checkedGuns = [];
+                document.querySelectorAll('.gun-checkbox:checked').forEach(cb => checkedGuns.push(cb.value));
+                activeWizard.selectedGuns = checkedGuns;
+            }
+
+            document.getElementById('sum-type').innerText = activeWizard.roomType;
+            document.getElementById('sum-winner').innerText = activeWizard.winnerRule;
+            document.getElementById('sum-team').innerText = activeWizard.teamType;
+            document.getElementById('sum-store').innerText = activeWizard.storeSystem;
+            document.getElementById('sum-fee').innerText = `🪙 ${activeWizard.entryFee}`;
+            document.getElementById('sum-creator').innerText = userState.name;
+        }
+
+        function confirmCreateRoom() {
+            const fee = parseInt(document.getElementById('wizard-entry-fee').value);
+
+            if (isNaN(fee) || fee <= 10) {
+                showToast("Entry fee must be greater than 10 coins!", "error");
+                return;
+            }
+
+            if (userState.balance < fee) {
+                showToast("Insufficient Coin balance to host room!", "error");
+                switchTab('wallet');
+                return;
+            }
+
+            // Deduct Fee & Create Room
+            userState.balance -= fee;
+
+            let maxP = 4;
+            if (activeWizard.teamType === '1v1') maxP = 2;
+            else if (activeWizard.teamType === '2v2') maxP = 4;
+            else if (activeWizard.teamType === '3v3') maxP = 6;
+            else if (activeWizard.teamType === '4v4') maxP = 8;
+
+            const newRoom = {
+                id: 'ff-room-' + Date.now(),
+                type: activeWizard.roomType,
+                winnerRule: activeWizard.winnerRule,
+                teamType: activeWizard.teamType,
+                maxPlayers: maxP,
+                storeSystem: activeWizard.storeSystem,
+                guns: [...activeWizard.selectedGuns],
+                toggles: { ...activeWizard.toggles },
+                entryFee: fee,
+                rules: activeWizard.rules,
+                creator: userState.name,
+                creatorUid: userState.uid,
+                participants: [{ name: userState.name, uid: userState.uid }],
+                status: 'WAITING',
+                createdAt: Date.now(),
+                roomId: '',
+                roomPass: '',
+                resultsSubmitted: false
+            };
+
+            ffRooms.unshift(newRoom);
+
+            transactions.unshift({
+                type: 'Host Fee',
+                desc: `Created Room ${newRoom.type}`,
+                amount: `- ${fee} Coins`,
+                date: new Date().toISOString().split('T')[0],
+                status: 'Completed'
+            });
+
+            renderHeaderAndProfileUI();
+            renderFreefireRooms();
+            renderTransactions();
+            closeCreateRoomWizard();
+
+            showToast(`Custom Room created! 15s cancellation window active.`, "success");
+            openRoomDetailsModal(newRoom.id);
+        }
+
+        function openRoomDetailsModal(roomId) {
+            currentActiveRoomId = roomId;
+            renderRoomDetailsContent(roomId);
+            document.getElementById('room-details-modal').classList.remove('hidden');
+        }
+
+        function closeRoomDetailsModal() {
+            document.getElementById('room-details-modal').classList.add('hidden');
+            currentActiveRoomId = null;
+        }
+
+        function renderRoomDetailsContent(roomId) {
+            const room = ffRooms.find(r => r.id === roomId);
+            if (!room) return;
+
+            document.getElementById('rd-type-badge').innerText = room.type;
+            document.getElementById('rd-title').innerText = `${room.type} (${room.teamType})`;
+            document.getElementById('rd-creator-name').innerText = room.creator;
+
+            document.getElementById('rd-team').innerText = room.teamType;
+            document.getElementById('rd-winner').innerText = room.winnerRule;
+            document.getElementById('rd-store').innerText = room.storeSystem;
+            document.getElementById('rd-throw').innerText = room.toggles.throwLimit;
+            document.getElementById('rd-skill').innerText = room.toggles.characterSkill;
+            document.getElementById('rd-headshot').innerText = room.toggles.headshotOnly;
+
+            if (room.storeSystem === 'Fixed' && room.guns.length > 0) {
+                document.getElementById('rd-guns-box').classList.remove('hidden');
+                document.getElementById('rd-guns-list').innerText = room.guns.join(', ');
+            } else {
+                document.getElementById('rd-guns-box').classList.add('hidden');
+            }
+
+            const elapsed = Math.floor((Date.now() - room.createdAt) / 1000);
+            const isCreator = room.creator === userState.name;
+
+            // Timer and lifecycle status management
+            const cancelBtn = document.getElementById('btn-cancel-match');
+            const creatorInputArea = document.getElementById('rd-creator-input-area');
+            const submitResultBtn = document.getElementById('btn-submit-result');
+
+            if (elapsed <= 15) {
+                document.getElementById('rd-status-badge').innerText = `15s Cancel Window (${15 - elapsed}s)`;
+                if (isCreator) cancelBtn.classList.remove('hidden');
+                else cancelBtn.classList.add('hidden');
+            } else {
+                document.getElementById('rd-status-badge').innerText = `Match Active`;
+                cancelBtn.classList.add('hidden');
+            }
+
+            // Room ID & Pass handling
+            if (room.roomId && room.roomPass) {
+                document.getElementById('rd-id-val').innerText = room.roomId;
+                document.getElementById('rd-pass-val').innerText = room.roomPass;
+                document.getElementById('rd-credentials-status').innerText = "Credentials Live (Read Only)";
+                document.getElementById('rd-credentials-status').className = "text-[10px] font-bold text-emerald-400";
+                creatorInputArea.classList.add('hidden');
+                submitResultBtn.classList.remove('hidden');
+            } else {
+                document.getElementById('rd-id-val').innerText = "Hidden";
+                document.getElementById('rd-pass-val').innerText = "Hidden";
+
+                if (elapsed > 15 && isCreator) {
+                    creatorInputArea.classList.remove('hidden');
+                } else {
+                    creatorInputArea.classList.add('hidden');
+                }
+            }
+
+            // Render Players List
+            const playersList = document.getElementById('rd-players-list');
+            playersList.innerHTML = room.participants.map((p, idx) => `
+                <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800 flex justify-between items-center text-xs">
+                    <div class="flex items-center gap-2">
+                        <span class="w-5 h-5 rounded-full bg-slate-800 text-slate-300 font-bold flex items-center justify-center text-[10px]">${idx + 1}</span>
+                        <strong class="text-white">${p.name}</strong>
+                    </div>
+                    <span class="text-amber-400 font-mono text-[11px]">${p.uid}</span>
+                </div>
+            `).join('');
+        }
+
+        function cancelMatchByCreator() {
+            if (!currentActiveRoomId) return;
+            const room = ffRooms.find(r => r.id === currentActiveRoomId);
+            if (!room) return;
+
+            room.status = 'CANCELLED';
+            userState.balance += room.entryFee; // Refund
+
+            transactions.unshift({
+                type: 'Refund',
+                desc: `Cancelled Room ${room.type}`,
+                amount: `+ ${room.entryFee} Coins`,
+                date: new Date().toISOString().split('T')[0],
+                status: 'Completed'
+            });
+
+            renderHeaderAndProfileUI();
+            renderFreefireRooms();
+            renderTransactions();
+            closeRoomDetailsModal();
+
+            showToast("Match cancelled within 15s window. Entry fee refunded!", "info");
+        }
+
+        function submitRoomCredentials() {
+            if (!currentActiveRoomId) return;
+            const room = ffRooms.find(r => r.id === currentActiveRoomId);
+            if (!room) return;
+
+            const idVal = document.getElementById('input-room-id').value.trim();
+            const passVal = document.getElementById('input-room-pass').value.trim();
+
+            if (!idVal || !passVal) {
+                showToast("Please enter both Room ID and Password!", "error");
+                return;
+            }
+
+            room.roomId = idVal;
+            room.roomPass = passVal;
+            room.status = 'ID_PASS_SUBMITTED';
+
+            renderRoomDetailsContent(currentActiveRoomId);
+            renderFreefireRooms();
+
+            showToast("Room ID and Password submitted! Visible to joined players.", "success");
+        }
+
+        function switchSpectatorTab(tab) {
+            if (tab === 'players') {
+                document.getElementById('rd-players-list').classList.remove('hidden');
+                document.getElementById('rd-spectators-list').classList.add('hidden');
+                document.getElementById('spectator-tab-players').className = "px-3 py-1 rounded-lg text-[10px] font-bold bg-orange-600 text-white";
+                document.getElementById('spectator-tab-specs').className = "px-3 py-1 rounded-lg text-[10px] font-bold bg-slate-800 text-slate-400";
+            } else {
+                document.getElementById('rd-players-list').classList.add('hidden');
+                document.getElementById('rd-spectators-list').classList.remove('hidden');
+                document.getElementById('spectator-tab-players').className = "px-3 py-1 rounded-lg text-[10px] font-bold bg-slate-800 text-slate-400";
+                document.getElementById('spectator-tab-specs').className = "px-3 py-1 rounded-lg text-[10px] font-bold bg-orange-600 text-white";
+            }
+        }
+
+        function openResultSubmitModal() {
+            document.getElementById('result-submit-modal').classList.remove('hidden');
+        }
+
+        function closeResultSubmitModal() {
+            document.getElementById('result-submit-modal').classList.add('hidden');
+        }
+
+        function simulateScreenshotUpload() {
+            document.getElementById('screenshot-status-text').innerText = "✓ Screenshot Attached (summary_proof.png)";
+            document.getElementById('screenshot-status-text').className = "text-[11px] text-emerald-400 font-bold";
+        }
+
+        function confirmResultSubmission() {
+            closeResultSubmitModal();
+            closeRoomDetailsModal();
+            showToast("Match results & screenshot submitted! Verification complete within 15 mins.", "success");
+        }
+
+        function selectDepositAmount(amt) {
+            document.getElementById('deposit-custom-input').value = amt;
+        }
+
+        async function processDeposit() {
+            const amt = parseInt(document.getElementById('deposit-custom-input').value);
+            if (isNaN(amt) || amt < 20) {
+                showToast("Minimum deposit is 20 Coins.", "error");
+                return;
+            }
+
+            if (!window.LigaFirebase?.auth?.currentUser) {
+                showToast("Please sign in first.", "error");
+                return;
+            }
+
+            const reference = window.prompt("Enter the real payment transaction/reference ID. The payment must contain your Liga1 email in the remark.");
+            if (!reference || !reference.trim()) {
+                showToast("Payment reference is required.", "error");
+                return;
+            }
+
+            try {
+                const call = window.LigaFirebase.httpsCallable(window.LigaFirebase.functions, "submitDeposit");
+                await call({
+                    amount: amt,
+                    paymentReference: reference.trim(),
+                    paymentMethod: "eSewa"
+                });
+                document.getElementById('deposit-custom-input').value = "";
+                showToast("Deposit submitted. Coins remain pending until admin verifies the real payment.", "success");
+            } catch (error) {
+                console.error("Deposit submission failed:", error);
+                showToast(error?.message || "Deposit request could not be submitted.", "error");
+            }
+        }
+
+        async function processCashout() {
+            const amt = parseInt(document.getElementById('cashout-amount').value);
+            const acc = document.getElementById('cashout-account').value.trim();
+            const method = document.getElementById('cashout-method').value;
+
+            if (isNaN(amt) || amt < 200) {
+                showToast("Minimum cashout is Rs. 200.", "error");
+                return;
+            }
+            if (!acc) {
+                showToast("Please enter your wallet/account ID.", "error");
+                return;
+            }
+
+            try {
+                const call = window.LigaFirebase.httpsCallable(window.LigaFirebase.functions, "requestWithdrawal");
+                await call({ amount: amt, wallet: method, accountId: acc });
+                document.getElementById('cashout-amount').value = '';
+                document.getElementById('cashout-account').value = '';
+                showToast("Withdrawal reserved and submitted. Admin will make the real payment manually.", "success");
+                const fresh = await window.LigaFirebase.httpsCallable(window.LigaFirebase.functions, "ensureUserProfile")({});
+                const data = fresh.data || {};
+                userState.earnings = Number(data.earnings || 0);
+                userState.pending = Number(data.pendingWithdrawal || 0);
+                renderHeaderAndProfileUI();
+            } catch (error) {
+                console.error("Withdrawal request failed:", error);
+                showToast(error?.message || "Withdrawal request could not be submitted.", "error");
+            }
+        }
+
+        function renderHeaderAndProfileUI() {
+            document.getElementById('header-balance').innerText = userState.balance.toLocaleString();
+            document.getElementById('sidebar-balance').innerText = userState.balance.toLocaleString();
+            document.getElementById('ff-banner-balance').innerText = userState.balance.toLocaleString();
+            document.getElementById('wallet-coins-large').innerText = userState.balance.toLocaleString();
+            document.getElementById('wallet-earnings').innerText = userState.earnings.toLocaleString();
+            document.getElementById('wallet-pending').innerText = userState.pending.toLocaleString();
+
+            document.getElementById('home-user-name').innerText = userState.name;
+            document.getElementById('home-user-email').innerText = userState.email;
+            document.getElementById('home-user-uid').innerText = userState.uid;
+            document.getElementById('user-name-header').innerText = userState.name;
+
+            const firebaseUser = window.LigaFirebase?.auth?.currentUser;
+            if (firebaseUser?.photoURL) {
+                const homeAvatar = document.getElementById('home-avatar');
+                const userAvatar = document.getElementById('user-avatar');
+                if (homeAvatar) homeAvatar.src = firebaseUser.photoURL;
+                if (userAvatar) userAvatar.src = firebaseUser.photoURL;
+            }
+        }
+
+        function renderTransactions() {
+            const tbody = document.getElementById('transaction-history-body');
+            if (!tbody) return;
+
+            tbody.innerHTML = transactions.map(tx => {
+                const isPlus = tx.amount.includes('+');
+                return `
+                    <tr>
+                        <td class="p-3 font-bold ${isPlus ? 'text-emerald-400' : 'text-rose-400'}">${tx.type}</td>
+                        <td class="p-3 text-slate-200">${tx.desc}</td>
+                        <td class="p-3 font-mono font-bold ${isPlus ? 'text-emerald-400' : 'text-slate-300'}">${tx.amount}</td>
+                        <td class="p-3 text-slate-400">${tx.date}</td>
+                        <td class="p-3">
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${tx.status === 'Completed' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'}">
+                                ${tx.status}
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderNotifications() {
+            const list = document.getElementById('notifications-list');
+            if (!list) return;
+
+            list.innerHTML = userState.notifications.map(n => `
+                <div class="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs space-y-1">
+                    <div class="flex justify-between items-center">
+                        <strong class="text-white">${n.title}</strong>
+                        <span class="text-[10px] text-slate-500">${n.time}</span>
+                    </div>
+                    <p class="text-slate-300 text-[11px]">${n.msg}</p>
+                </div>
+            `).join('');
+        }
+
+        function toggleNotifications() {
+            document.getElementById('notifications-drawer').classList.toggle('hidden');
+        }
+
+        function randomizeAvatar() {
+            const seeds = ['Ninja', 'Slayer', 'Viper', 'Phoenix', 'Falcon', 'Shadow'];
+            userState.avatarSeed = seeds[Math.floor(Math.random() * seeds.length)] + Math.floor(Math.random() * 100);
+            const newUrl = `https://api.dicebear.com/7.x/bottts/svg?seed=${userState.avatarSeed}`;
+            document.getElementById('home-avatar').src = newUrl;
+            document.getElementById('user-avatar').src = newUrl;
+        }
+
+        function copyFieldValue(fieldId, label) {
+            let val = '';
+            const inputEl = document.getElementById(fieldId);
+            if (inputEl.tagName === 'INPUT') val = inputEl.value;
+            else val = inputEl.innerText;
+
+            const tempInput = document.createElement('input');
+            tempInput.value = val;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+
+            showToast(`${label} copied to clipboard!`, "info");
+        }
+
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            let bg = 'bg-slate-900 border-indigo-500 text-white';
+            let icon = 'fa-circle-info text-indigo-400';
+
+            if (type === 'success') {
+                bg = 'bg-slate-900 border-emerald-500 text-white';
+                icon = 'fa-circle-check text-emerald-400';
+            } else if (type === 'error') {
+                bg = 'bg-slate-900 border-rose-500 text-white';
+                icon = 'fa-circle-xmark text-rose-400';
+            }
+
+            toast.className = `fixed bottom-20 md:bottom-8 right-4 z-50 px-4 py-3 rounded-2xl border shadow-2xl flex items-center gap-3 text-xs font-bold ${bg} transition transform translate-y-4 opacity-0`;
+            toast.innerHTML = `<i class="fa-solid ${icon} text-base"></i> <span>${message}</span>`;
+
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-4', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-4');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+    </script>
+</body>
+</html>

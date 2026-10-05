@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Liga1 Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-slate-950 text-white p-4 md:p-8">
+  <main class="max-w-6xl mx-auto space-y-6">
+    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div><h1 class="text-2xl font-black">Liga1 Admin</h1><p class="text-sm text-slate-400">Real payment verification and withdrawal control</p></div>
+      <button id="logout" class="px-4 py-2 rounded-xl bg-slate-800 font-bold">Sign out</button>
+    </header>
+
+    <div id="status" class="hidden rounded-xl border p-3 text-sm"></div>
+
+    <section id="login" class="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+      <p class="text-slate-400 mb-4">Sign in with the Google account that has the Firebase <b>admin</b> custom claim.</p>
+      <button id="loginBtn" class="px-5 py-3 rounded-xl bg-indigo-600 font-black">Continue with Google</button>
+    </section>
+
+    <section id="panel" class="hidden space-y-6">
+      <div class="grid md:grid-cols-3 gap-4">
+        <div class="rounded-2xl border border-slate-800 bg-slate-900 p-5"><div class="text-xs text-slate-400">Pending deposits</div><div id="depositCount" class="text-3xl font-black mt-1">0</div></div>
+        <div class="rounded-2xl border border-slate-800 bg-slate-900 p-5"><div class="text-xs text-slate-400">Pending withdrawals</div><div id="withdrawCount" class="text-3xl font-black mt-1">0</div></div>
+        <div class="rounded-2xl border border-slate-800 bg-slate-900 p-5"><div class="text-xs text-slate-400">Admin account</div><div id="adminEmail" class="font-bold mt-1 break-all">-</div></div>
+      </div>
+
+      <section class="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+        <h2 class="font-black text-lg mb-4">Pending Deposits</h2>
+        <div id="deposits" class="space-y-3"></div>
+      </section>
+
+      <section class="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+        <h2 class="font-black text-lg mb-4">Pending Withdrawals</h2>
+        <div id="withdrawals" class="space-y-3"></div>
+      </section>
+
+      <section class="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+        <h2 class="font-black text-lg mb-1">Payment QR Settings</h2>
+        <p class="text-xs text-slate-400 mb-4">Host the QR image at a trusted HTTPS URL, then save it here.</p>
+        <div class="grid md:grid-cols-2 gap-3">
+          <input id="qrUrl" class="bg-slate-950 border border-slate-700 rounded-xl px-3 py-3" placeholder="https://.../liga1-qr.png">
+          <input id="paymentMethods" class="bg-slate-950 border border-slate-700 rounded-xl px-3 py-3" value="eSewa,Khalti,Bank Transfer" placeholder="eSewa,Khalti">
+        </div>
+        <textarea id="paymentInstructions" class="mt-3 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-3 min-h-24" placeholder="Payment instructions"></textarea>
+        <button id="saveSettings" class="mt-3 px-5 py-3 rounded-xl bg-emerald-600 font-black">Save Payment Settings</button>
+      </section>
+    </section>
+  </main>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import { getFirestore, collection, query, where, orderBy, onSnapshot, doc, getDoc } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-functions.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDL9o1zBLYRSkToZgdH9wHFbo-wtceufWQ",
+  authDomain: "fox-hub.firebaseapp.com",
+  projectId: "fox-hub",
+  storageBucket: "fox-hub.firebasestorage.app",
+  messagingSenderId: "860870702110",
+  appId: "1:860870702110:web:96cbb75fa5bb8b37c32a0f"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const functions = getFunctions(app, "asia-south1");
+const provider = new GoogleAuthProvider();
+let depositRows = [], withdrawalRows = [];
+let unsubs = [];
+
+const $ = id => document.getElementById(id);
+function status(msg, good=false) {
+  const el=$('status'); el.textContent=msg; el.className=`rounded-xl border p-3 text-sm ${good?'border-emerald-500/30 bg-emerald-950/30 text-emerald-300':'border-rose-500/30 bg-rose-950/30 text-rose-300'}`; el.classList.remove('hidden');
+}
+function escapeHtml(v) { return String(v ?? '').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
+
+$('loginBtn').onclick=async()=>{ try{await signInWithPopup(auth,provider);}catch(e){status(e.message)} };
+$('logout').onclick=()=>signOut(auth);
+
+onAuthStateChanged(auth, async user=>{
+  unsubs.forEach(fn=>fn()); unsubs=[];
+  if(!user){$('login').classList.remove('hidden');$('panel').classList.add('hidden');return;}
+  const token=await user.getIdTokenResult(true);
+  if(token.claims.admin!==true){status('This Google account is not an administrator.'); await signOut(auth); return;}
+  $('login').classList.add('hidden'); $('panel').classList.remove('hidden'); $('adminEmail').textContent=user.email||user.uid;
+  listenRequests(); loadSettings();
+});
+
+function listenRequests(){
+  const dq=query(collection(db,'depositRequests'),where('status','==','pending'),orderBy('createdAt','desc'));
+  const wq=query(collection(db,'withdrawalRequests'),where('status','==','pending'),orderBy('createdAt','desc'));
+  unsubs.push(onSnapshot(dq,s=>{depositRows=s.docs.map(d=>({id:d.id,...d.data()}));render();},e=>status(e.message)));
+  unsubs.push(onSnapshot(wq,s=>{withdrawalRows=s.docs.map(d=>({id:d.id,...d.data()}));render();},e=>status(e.message)));
+}
+function render(){
+  $('depositCount').textContent=depositRows.length; $('withdrawCount').textContent=withdrawalRows.length;
+  $('deposits').innerHTML=depositRows.length?depositRows.map(r=>`<div class="border border-slate-800 rounded-xl p-4"><div class="grid md:grid-cols-5 gap-2 text-sm"><div><b>Amount</b><br>🪙 ${escapeHtml(r.amount)}</div><div><b>Email</b><br>${escapeHtml(r.email)}</div><div><b>Method</b><br>${escapeHtml(r.paymentMethod)}</div><div><b>Reference</b><br>${escapeHtml(r.paymentReference)}</div><div class="flex gap-2 items-center"><button onclick="approveDeposit('${r.id}')" class="px-3 py-2 rounded-lg bg-emerald-600 font-bold">Approve</button><button onclick="denyDeposit('${r.id}')" class="px-3 py-2 rounded-lg bg-rose-600 font-bold">Deny</button></div></div></div>`).join(''):'<div class="text-slate-500 text-sm">No pending deposits.</div>';
+  $('withdrawals').innerHTML=withdrawalRows.length?withdrawalRows.map(r=>`<div class="border border-slate-800 rounded-xl p-4"><div class="grid md:grid-cols-6 gap-2 text-sm"><div><b>Amount</b><br>🪙 ${escapeHtml(r.amount)}</div><div><b>Email</b><br>${escapeHtml(r.email)}</div><div><b>Wallet</b><br>${escapeHtml(r.wallet)}</div><div><b>Account</b><br>${escapeHtml(r.accountId)}</div><div class="text-amber-300"><b>Action</b><br>Pay manually first</div><div class="flex gap-2 items-center"><button onclick="approveWithdrawal('${r.id}')" class="px-3 py-2 rounded-lg bg-emerald-600 font-bold">Paid</button><button onclick="denyWithdrawal('${r.id}')" class="px-3 py-2 rounded-lg bg-rose-600 font-bold">Deny</button></div></div></div>`).join(''):'<div class="text-slate-500 text-sm">No pending withdrawals.</div>';
+}
+async function call(name,data){try{await httpsCallable(functions,name)(data);status('Action completed.',true)}catch(e){status(e.message)}}
+window.approveDeposit=id=>call('adminApproveDeposit',{requestId:id});
+window.denyDeposit=id=>{const reason=prompt('Reason for denial:')||'Payment could not be verified.';call('adminDenyDeposit',{requestId:id,reason});};
+window.approveWithdrawal=id=>{if(confirm('Confirm you already sent the real payment to the displayed wallet/account?'))call('adminApproveWithdrawal',{requestId:id});};
+window.denyWithdrawal=id=>{const reason=prompt('Reason for denial:')||'Withdrawal was denied.';call('adminDenyWithdrawal',{requestId:id,reason});};
+
+async function loadSettings(){const s=await getDoc(doc(db,'settings','payment'));if(s.exists()){const d=s.data();$('qrUrl').value=d.qrImageUrl||'';$('paymentInstructions').value=d.instructions||'';$('paymentMethods').value=(d.methods||[]).join(',');}}
+$('saveSettings').onclick=async()=>{const qrImageUrl=$('qrUrl').value.trim();const instructions=$('paymentInstructions').value.trim();const methods=$('paymentMethods').value.split(',').map(x=>x.trim()).filter(Boolean);await call('adminSetPaymentSettings',{qrImageUrl,instructions,methods});};
+</script>
+</body>
+</html>
